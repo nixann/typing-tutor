@@ -1,6 +1,7 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
-use ggez::event::{EventHandler};
+use ggez::conf::Conf;
+use ggez::event::EventHandler;
 use ggez::graphics::{self, Color};
 use ggez::input::keyboard;
 use ggez::mint::Point2;
@@ -11,18 +12,51 @@ use crate::word::Word;
 
 const DESIRED_FPS: u32 = 60;
 
+const WORD_SCORE: u32 = 10;
+
 pub struct Game {
-    is_game_over: bool, // Your state here...
+    screen_height: f32,
+    key_codes_map: HashMap<keyboard::KeyCode, char>,
+    is_game_running: bool,
     source_words: Vec<String>,
     words: VecDeque<Word>,
     time_until_next_word: f32,
+    current_score: u32,
 }
 
 impl Game {
-    pub fn new(_ctx: &mut Context) -> Game {
+    pub fn new(conf: &Conf) -> Game {
         // Load/create resources such as images here.
         Game {
-            is_game_over: false,
+            is_game_running: false,
+            key_codes_map: HashMap::from([
+                (keyboard::KeyCode::A, 'a'),
+                (keyboard::KeyCode::B, 'b'),
+                (keyboard::KeyCode::C, 'c'),
+                (keyboard::KeyCode::D, 'd'),
+                (keyboard::KeyCode::E, 'e'),
+                (keyboard::KeyCode::F, 'f'),
+                (keyboard::KeyCode::G, 'g'),
+                (keyboard::KeyCode::H, 'h'),
+                (keyboard::KeyCode::I, 'i'),
+                (keyboard::KeyCode::J, 'j'),
+                (keyboard::KeyCode::K, 'k'),
+                (keyboard::KeyCode::L, 'l'),
+                (keyboard::KeyCode::M, 'm'),
+                (keyboard::KeyCode::N, 'n'),
+                (keyboard::KeyCode::O, 'o'),
+                (keyboard::KeyCode::P, 'p'),
+                (keyboard::KeyCode::Q, 'q'),
+                (keyboard::KeyCode::R, 'r'),
+                (keyboard::KeyCode::S, 's'),
+                (keyboard::KeyCode::T, 't'),
+                (keyboard::KeyCode::U, 'u'),
+                (keyboard::KeyCode::V, 'v'),
+                (keyboard::KeyCode::W, 'w'),
+                (keyboard::KeyCode::X, 'x'),
+                (keyboard::KeyCode::Y, 'y'),
+                (keyboard::KeyCode::Z, 'z'),
+            ]),
             source_words: vec![
                 "the", "of", "and", "a", "to", "in", "is", "you", "that", "it", "he", "was", "for",
                 "on", "are", "with", "as", "I", "his", "they", "be", "at", "one", "have", "this",
@@ -52,14 +86,25 @@ impl Game {
             .map(|&s| s.to_string())
             .collect(),
             time_until_next_word: 1.0,
-            words: VecDeque::new(), // ...
+            words: VecDeque::new(),
+            screen_height: conf.window_mode.height,
+            current_score: 0,
         }
     }
 }
 
 impl EventHandler for Game {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if self.is_game_over {
+        if let Some(first_word) = self.words.front() {
+            if first_word.position.y >= self.screen_height {
+                self.is_game_running = false;
+                self.words.clear();
+                self.current_score = 0;
+                return Ok(());
+            }
+        }
+
+        if !self.is_game_running {
             return Ok(());
         }
 
@@ -92,11 +137,28 @@ impl EventHandler for Game {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = graphics::Canvas::from_frame(ctx, Color::BLACK);
-        for word in &self.words {
-            let text = graphics::Text::new(word.get_display_value());
-            canvas.draw(&text, graphics::DrawParam::default().dest(word.position));
+        if !self.is_game_running {
+            let mut text = graphics::Text::new("PRESS SPACE TO START");
+            text.set_scale(graphics::PxScale::from(50.0));
+
+            // TODO: do not use static values for the position
+            canvas.draw(
+                &text,
+                graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 200.0 }),
+            );
         }
-        // Draw code here...
+        else {
+            let mut current_score_text = graphics::Text::new(format!("SCORE: {}", self.current_score));
+            current_score_text.set_scale(graphics::PxScale::from(50.0));
+            canvas.draw(&current_score_text, graphics::DrawParam::default().dest(Point2 { x: 30.0, y: self.screen_height - 100.0 }));
+            for word in &self.words {
+                let mut text = graphics::Text::new(word.get_display_value());
+                text.set_scale(graphics::PxScale::from(40.0));
+                // text.set_layout(layout)
+
+                canvas.draw(&text, graphics::DrawParam::default().dest(word.position));
+            }
+        }
         canvas.finish(ctx)
     }
 
@@ -106,91 +168,20 @@ impl EventHandler for Game {
         input: ggez::input::keyboard::KeyInput,
         _repeated: bool,
     ) -> GameResult {
-        if let Some(current_word) = self.words.front_mut() {
-            match input.keycode {
-                Some(keyboard::KeyCode::A) => {
-                    current_word.handle_typed_letter('a');
+        if let Some(input_key_code) = input.keycode {
+            if let Some(current_word) = self.words.front_mut() {
+                if let Some(typed_letter) = self.key_codes_map.get(&input_key_code) {
+                    current_word.handle_typed_letter(*typed_letter)
                 }
-                Some(keyboard::KeyCode::B) => {
-                    current_word.handle_typed_letter('b');
+
+                if current_word.is_completed() {
+                    self.words.pop_front();
+                    self.current_score += WORD_SCORE;
                 }
-                Some(keyboard::KeyCode::C) => {
-                    current_word.handle_typed_letter('c');
-                }
-                Some(keyboard::KeyCode::D) => {
-                    current_word.handle_typed_letter('d');
-                }
-                Some(keyboard::KeyCode::E) => {
-                    current_word.handle_typed_letter('e');
-                }
-                Some(keyboard::KeyCode::F) => {
-                    current_word.handle_typed_letter('f');
-                }
-                Some(keyboard::KeyCode::G) => {
-                    current_word.handle_typed_letter('g');
-                }
-                Some(keyboard::KeyCode::H) => {
-                    current_word.handle_typed_letter('h');
-                }
-                Some(keyboard::KeyCode::I) => {
-                    current_word.handle_typed_letter('i');
-                }
-                Some(keyboard::KeyCode::J) => {
-                    current_word.handle_typed_letter('j');
-                }
-                Some(keyboard::KeyCode::K) => {
-                    current_word.handle_typed_letter('k');
-                }
-                Some(keyboard::KeyCode::L) => {
-                    current_word.handle_typed_letter('l');
-                }
-                Some(keyboard::KeyCode::M) => {
-                    current_word.handle_typed_letter('m');
-                }
-                Some(keyboard::KeyCode::N) => {
-                    current_word.handle_typed_letter('n');
-                }
-                Some(keyboard::KeyCode::O) => {
-                    current_word.handle_typed_letter('o');
-                }
-                Some(keyboard::KeyCode::P) => {
-                    current_word.handle_typed_letter('p');
-                }
-                Some(keyboard::KeyCode::Q) => {
-                    current_word.handle_typed_letter('q');
-                }
-                Some(keyboard::KeyCode::R) => {
-                    current_word.handle_typed_letter('r');
-                }
-                Some(keyboard::KeyCode::S) => {
-                    current_word.handle_typed_letter('s');
-                }
-                Some(keyboard::KeyCode::T) => {
-                    current_word.handle_typed_letter('t');
-                }
-                Some(keyboard::KeyCode::U) => {
-                    current_word.handle_typed_letter('u');
-                }
-                Some(keyboard::KeyCode::V) => {
-                    current_word.handle_typed_letter('v');
-                }
-                Some(keyboard::KeyCode::W) => {
-                    current_word.handle_typed_letter('w');
-                }
-                Some(keyboard::KeyCode::X) => {
-                    current_word.handle_typed_letter('x');
-                }
-                Some(keyboard::KeyCode::Y) => {
-                    current_word.handle_typed_letter('y');
-                }
-                Some(keyboard::KeyCode::Z) => {
-                    current_word.handle_typed_letter('z');
-                }
-                _ => (), // handle all other cases
             }
 
-            if current_word.is_completed() {
-                self.words.pop_front();
+            if !self.is_game_running && input_key_code == keyboard::KeyCode::Space {
+                self.is_game_running = true;
             }
         }
         return Ok(());
