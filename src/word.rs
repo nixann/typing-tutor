@@ -15,7 +15,6 @@ impl Word {
 
     pub fn get_display_value(&self) -> String {
         self.value.graphemes(true).skip(self.progress_index).collect()
-        // self.value.chars().take(self.value.len() - self.progress_index).collect()
     }
 
     pub fn handle_typed_letter(&mut self, letter: char) {
@@ -27,6 +26,6 @@ impl Word {
     }
 
     pub fn is_completed(&self) -> bool {
-        return self.progress_index == self.value.graphemes(true).count() - 1
+        return self.progress_index == self.value.graphemes(true).count()
     }
 }

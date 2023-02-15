@@ -14,6 +14,9 @@ const DESIRED_FPS: u32 = 60;
 
 const WORD_SCORE: u32 = 10;
 
+const INITIAL_TIME_UNTIL_NEXT_WORD: f32 = 1.0;
+const INITIAL_GAME_SPEED: u32 = 50;
+
 pub struct Game {
     screen_height: f32,
     key_codes_map: HashMap<keyboard::KeyCode, char>,
@@ -21,7 +24,9 @@ pub struct Game {
     source_words: Vec<String>,
     words: VecDeque<Word>,
     time_until_next_word: f32,
+    next_word_loop_length: f32,
     current_score: u32,
+    game_speed: u32,
 }
 
 impl Game {
@@ -85,10 +90,12 @@ impl Game {
             .iter()
             .map(|&s| s.to_string())
             .collect(),
-            time_until_next_word: 1.0,
+            time_until_next_word: INITIAL_TIME_UNTIL_NEXT_WORD,
+            next_word_loop_length: INITIAL_TIME_UNTIL_NEXT_WORD,
             words: VecDeque::new(),
             screen_height: conf.window_mode.height,
             current_score: 0,
+            game_speed: INITIAL_GAME_SPEED
         }
     }
 }
@@ -110,11 +117,10 @@ impl EventHandler for Game {
 
         while ctx.time.check_update_time(DESIRED_FPS) {
             let last_frame_length = ctx.time.delta().as_secs_f32();
-
             for mut word in &mut self.words {
                 word.position = Point2 {
                     x: word.position.x,
-                    y: word.position.y + 1.0,
+                    y: word.position.y + (self.game_speed as f32 * last_frame_length),
                 }
             }
 
@@ -127,7 +133,7 @@ impl EventHandler for Game {
                     position: top_left,
                     progress_index: 0,
                 });
-                self.time_until_next_word = 1.0;
+                self.time_until_next_word = self.next_word_loop_length;
             }
         }
 
@@ -177,6 +183,10 @@ impl EventHandler for Game {
                 if current_word.is_completed() {
                     self.words.pop_front();
                     self.current_score += WORD_SCORE;
+                    self.game_speed += 20;
+                    if self.next_word_loop_length > 0.01 {
+                        self.next_word_loop_length -= 0.01;
+                    }
                 }
             }
 
