@@ -209,8 +209,7 @@ impl EventHandler for Game {
             }
 
             if !self.is_game_running && input_key_code == keyboard::KeyCode::Space {
-                self.is_game_running = true;
-                self.time_until_next_word = Some(INITIAL_TIME_UNTIL_NEXT_WORD);
+                self.start_game()?
             }
         }
         return Ok(());
@@ -296,12 +295,19 @@ impl Game {
         )
     }
 
+    fn start_game(&mut self) -> GameResult {
+        self.is_game_running = true;
+        self.current_score = 0;
+        self.life_points = 0;
+        self.time_until_next_word = Some(INITIAL_TIME_UNTIL_NEXT_WORD);
+
+        Ok(())
+    }
+
     fn end_game(&mut self) -> GameResult {
         self.is_game_running = false;
         self.words.clear();
-        self.current_score = 0;
         self.passed_time_since_game_end = Some(0.0);
-        self.life_points = 0;
         Ok(())
     }
 
