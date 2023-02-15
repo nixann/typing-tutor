@@ -2,12 +2,12 @@ use std::collections::{HashMap, VecDeque};
 
 use ggez::conf::Conf;
 use ggez::event::EventHandler;
-use ggez::graphics::{self, Color};
+use ggez::graphics::{self, Canvas, Color};
 use ggez::input::keyboard;
 use ggez::mint::Point2;
 use ggez::{Context, GameResult};
-use rand::Rng;
 use rand::seq::SliceRandom;
+use rand::Rng;
 
 use crate::word::Word;
 
@@ -98,7 +98,7 @@ impl Game {
             screen_height: conf.window_mode.height,
             screen_width: conf.window_mode.width,
             current_score: 0,
-            game_speed: INITIAL_GAME_SPEED
+            game_speed: INITIAL_GAME_SPEED,
         }
     }
 }
@@ -107,10 +107,7 @@ impl EventHandler for Game {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         if let Some(first_word) = self.words.front() {
             if first_word.position.y >= self.screen_height {
-                self.is_game_running = false;
-                self.words.clear();
-                self.current_score = 0;
-                return Ok(());
+                self.end_game()?
             }
         }
 
@@ -120,53 +117,25 @@ impl EventHandler for Game {
 
         while ctx.time.check_update_time(DESIRED_FPS) {
             let last_frame_length = ctx.time.delta().as_secs_f32();
-            for mut word in &mut self.words {
-                word.position = Point2 {
-                    x: word.position.x,
-                    y: word.position.y + (self.game_speed as f32 * last_frame_length),
-                }
-            }
+            self.update_words_positions(self.game_speed as f32 * last_frame_length);
 
             self.time_until_next_word -= last_frame_length;
             if self.time_until_next_word <= 0.0 {
-                let word = self.source_words.choose(&mut rand::thread_rng()).unwrap();
-                let word_position = Point2 { x: rand::thread_rng().gen_range(0.0 .. self.screen_width - 100.0), y: 0.0 };
-                self.words.push_back(Word {
-                    value: word.clone(),
-                    position: word_position,
-                    progress_index: 0,
-                });
+                self.spawn_new_word();
                 self.time_until_next_word = self.next_word_loop_length;
             }
         }
 
-        // Update code here...
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = graphics::Canvas::from_frame(ctx, Color::BLACK);
         if !self.is_game_running {
-            let mut text = graphics::Text::new("PRESS SPACE TO START");
-            text.set_scale(graphics::PxScale::from(50.0));
-
-            // TODO: do not use static values for the position
-            canvas.draw(
-                &text,
-                graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 200.0 }),
-            );
-        }
-        else {
-            let mut current_score_text = graphics::Text::new(format!("SCORE: {}", self.current_score));
-            current_score_text.set_scale(graphics::PxScale::from(50.0));
-            canvas.draw(&current_score_text, graphics::DrawParam::default().dest(Point2 { x: 30.0, y: self.screen_height - 100.0 }));
-            for word in &self.words {
-                let mut text = graphics::Text::new(word.get_display_value());
-                text.set_scale(graphics::PxScale::from(40.0));
-                // text.set_layout(layout)
-
-                canvas.draw(&text, graphics::DrawParam::default().dest(word.position));
-            }
+            self.draw_home_screen(&mut canvas);
+        } else {
+            self.draw_player_stats(&mut canvas);
+            self.draw_words(&mut canvas);
         }
         canvas.finish(ctx)
     }
@@ -184,9 +153,7 @@ impl EventHandler for Game {
                 }
 
                 if current_word.is_completed() {
-                    self.words.pop_front();
-                    self.current_score += WORD_SCORE;
-                    self.game_speed += 20;
+                    self.remove_completed_word();
                     if self.next_word_loop_length > 0.01 {
                         self.next_word_loop_length -= 0.01;
                     }
@@ -198,5 +165,75 @@ impl EventHandler for Game {
             }
         }
         return Ok(());
+    }
+}
+
+impl Game {
+    fn draw_home_screen(&self, canvas: &mut Canvas) {
+        let mut text = graphics::Text::new("PRESS SPACE TO START");
+        text.set_scale(graphics::PxScale::from(50.0));
+
+        // TODO: do not use static values for the position
+        canvas.draw(
+            &text,
+            graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 200.0 }),
+        );
+    }
+
+    fn draw_player_stats(&self, canvas: &mut Canvas) {
+        let mut current_score_text = graphics::Text::new(format!("SCORE: {}", self.current_score));
+        current_score_text.set_scale(graphics::PxScale::from(50.0));
+        canvas.draw(
+            &current_score_text,
+            graphics::DrawParam::default().dest(Point2 {
+                x: 30.0,
+                y: self.screen_height - 100.0,
+            }),
+        );
+    }
+
+    fn draw_words(&self, canvas: &mut Canvas) {
+        for word in &self.words {
+            let mut text = graphics::Text::new(word.get_display_value());
+            text.set_scale(graphics::PxScale::from(40.0));
+            // text.set_layout(layout)
+
+            canvas.draw(&text, graphics::DrawParam::default().dest(word.position));
+        }
+    }
+
+    fn end_game(&mut self) -> GameResult {
+        self.is_game_running = false;
+        self.words.clear();
+        self.current_score = 0;
+        Ok(())
+    }
+
+    fn update_words_positions(&mut self, delta_y: f32) {
+        for mut word in &mut self.words {
+            word.position = Point2 {
+                x: word.position.x,
+                y: word.position.y + delta_y,
+            }
+        }
+    }
+
+    fn spawn_new_word(&mut self) {
+        let word = self.source_words.choose(&mut rand::thread_rng()).unwrap();
+        let word_position = Point2 {
+            x: rand::thread_rng().gen_range(0.0..self.screen_width - 100.0),
+            y: 0.0,
+        };
+        self.words.push_back(Word {
+            value: word.clone(),
+            position: word_position,
+            progress_index: 0,
+        });
+    }
+
+    fn remove_completed_word(&mut self) {
+        self.words.pop_front();
+        self.current_score += WORD_SCORE;
+        self.game_speed += 20;
     }
 }
