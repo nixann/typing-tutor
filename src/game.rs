@@ -26,7 +26,7 @@ pub struct Game {
     is_game_running: bool,
     source_words: Vec<String>,
     words: VecDeque<Word>,
-    time_until_next_word: f32,
+    time_until_next_word: Option<f32>,
     next_word_loop_length: f32,
     current_score: u32,
     life_points: u32,
@@ -98,7 +98,7 @@ impl Game {
             .iter()
             .map(|&s| s.to_string())
             .collect(),
-            time_until_next_word: INITIAL_TIME_UNTIL_NEXT_WORD,
+            time_until_next_word: None,
             next_word_loop_length: INITIAL_TIME_UNTIL_NEXT_WORD,
             words: VecDeque::new(),
             screen_height: conf.window_mode.height,
@@ -142,20 +142,21 @@ impl EventHandler for Game {
                 }
             }
             self.update_words_positions(self.game_speed as f32 * last_frame_length);
-
-            if self.time_until_next_word <= 0.0 {
-                let mut new_word_limit = None;
-                if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
-                    if short_words_time_left <= 0.0 {
-                        self.spawn_only_short_words_time_left = None
-                    } else {
-                        new_word_limit = Some(3);
+            if let Some(time_until_next_word) = self.time_until_next_word {
+                if time_until_next_word <= 0.0 {
+                    let mut new_word_limit = None;
+                    if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+                        if short_words_time_left <= 0.0 {
+                            self.spawn_only_short_words_time_left = None
+                        } else {
+                            new_word_limit = Some(3);
+                        }
                     }
+                    self.spawn_new_word(new_word_limit);
+                    self.time_until_next_word = Some(self.next_word_loop_length);
+                } else {
+                    self.time_until_next_word = Some(time_until_next_word - last_frame_length);
                 }
-                self.spawn_new_word(new_word_limit);
-                self.time_until_next_word = self.next_word_loop_length;
-            } else {
-                self.time_until_next_word -= last_frame_length;
             }
 
             if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
@@ -209,6 +210,7 @@ impl EventHandler for Game {
 
             if !self.is_game_running && input_key_code == keyboard::KeyCode::Space {
                 self.is_game_running = true;
+                self.time_until_next_word = Some(INITIAL_TIME_UNTIL_NEXT_WORD);
             }
         }
         return Ok(());
