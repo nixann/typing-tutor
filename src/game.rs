@@ -72,7 +72,7 @@ impl Game {
             ]),
             source_words: vec![
                 "the", "of", "and", "a", "to", "in", "is", "you", "that", "it", "he", "was", "for",
-                "on", "are", "with", "as", "I", "his", "they", "be", "at", "one", "have", "this",
+                "on", "are", "with", "as", "his", "they", "be", "at", "one", "have", "this",
                 "from", "or", "had", "by", "hot", "word", "but", "what", "some", "we", "can",
                 "out", "other", "were", "all", "there", "when", "up", "use", "your", "how", "said",
                 "an", "each", "she", "which", "do", "their", "time", "if", "will", "way", "about",
@@ -218,49 +218,52 @@ impl EventHandler for Game {
 impl Game {
     fn draw_home_screen(&self, canvas: &mut Canvas) {
         let mut text = graphics::Text::new("PRESS SPACE TO START");
-        text.set_scale(graphics::PxScale::from(50.0));
+        text.set_font("SecondaryFont");
 
-        // TODO: do not use static values for the position
+        text.set_scale(graphics::PxScale::from(50.0));
         canvas.draw(
             &text,
-            graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 200.0 }),
-        );
+            graphics::DrawParam::default()
+                .color(Color::WHITE)
+                .dest(Point2 { x: 350.0, y: 200.0 }),
+        )
     }
 
     fn draw_player_stats(&self, canvas: &mut Canvas) {
-        let mut current_score_text = graphics::Text::new(format!("SCORE: {}", self.current_score));
-        current_score_text.set_scale(graphics::PxScale::from(50.0));
-        canvas.draw(
-            &current_score_text,
-            graphics::DrawParam::default().dest(Point2 {
+        let mut text = graphics::Text::new(format!("SCORE: {}", self.current_score));
+        self.draw_text(
+            &mut text,
+            graphics::PxScale::from(50.0),
+            Point2 {
                 x: 30.0,
                 y: self.screen_height - 100.0,
-            }),
+            },
+            Color::WHITE,
+            canvas,
         );
 
-        let mut life_points_text =
-            graphics::Text::new(format!("LIFE POINTS: {}", self.life_points));
-        life_points_text.set_scale(graphics::PxScale::from(50.0));
-        canvas.draw(
-            &life_points_text,
-            graphics::DrawParam::default().dest(Point2 {
+        let mut text = graphics::Text::new(format!("LIFE POINTS: {}", self.life_points));
+        self.draw_text(
+            &mut text,
+            graphics::PxScale::from(50.0),
+            Point2 {
                 x: 30.0,
                 y: self.screen_height - 150.0,
-            }),
+            },
+            Color::WHITE,
+            canvas,
         );
     }
 
     fn draw_words(&self, canvas: &mut Canvas) {
         for word in &self.words {
             let mut text = graphics::Text::new(word.get_display_value());
-            text.set_scale(graphics::PxScale::from(40.0));
-            let color = word.get_color();
-
-            canvas.draw(
-                &text,
-                graphics::DrawParam::default()
-                    .color(color)
-                    .dest(word.position),
+            self.draw_text(
+                &mut text,
+                graphics::PxScale::from(40.0),
+                word.position,
+                word.get_color(),
+                canvas,
             );
         }
     }
@@ -272,6 +275,23 @@ impl Game {
             &text,
             graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 100.0 }),
         );
+    }
+
+    fn draw_text(
+        &self,
+        text: &mut graphics::Text,
+        scale: graphics::PxScale,
+        position: Point2<f32>,
+        color: Color,
+        canvas: &mut Canvas,
+    ) {
+        text.set_font("PrimaryFont");
+
+        text.set_scale(scale);
+        canvas.draw(
+            text,
+            graphics::DrawParam::default().color(color).dest(position),
+        )
     }
 
     fn end_game(&mut self) -> GameResult {

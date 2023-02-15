@@ -2,12 +2,8 @@ use std::{env, path};
 
 use ggez::conf::{Conf, WindowMode};
 use ggez::event::{self};
-use ggez::ContextBuilder;
+use ggez::{graphics, ContextBuilder};
 use typing_tutor::game::Game;
-
-// load font
-// let font_data = graphics::FontData::from_path(&ctx, "/DejaVuSerif.ttf").unwrap();
-// ctx.gfx.add_font("MainFont", font_data);
 
 fn main() {
     let conf = Conf::new().window_mode(WindowMode {
@@ -16,7 +12,7 @@ fn main() {
         ..Default::default()
     });
 
-    let (ctx, event_loop) = ContextBuilder::new("shooter", "FMI")
+    let (mut ctx, event_loop) = ContextBuilder::new("shooter", "FMI")
         .default_conf(conf.clone())
         .build()
         .unwrap();
@@ -27,6 +23,12 @@ fn main() {
         path.push("resources");
         ctx.fs.mount(&path, true);
     }
+
+    // load font
+    let font_data = graphics::FontData::from_path(&ctx, "/GravitasOne.ttf").unwrap();
+    ctx.gfx.add_font("PrimaryFont", font_data);
+    let font_data = graphics::FontData::from_path(&ctx, "/BungeeShade.ttf").unwrap();
+    ctx.gfx.add_font("SecondaryFont", font_data);
     let state = Game::new(&conf);
     event::run(ctx, event_loop, state);
 }
