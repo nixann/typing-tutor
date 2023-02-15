@@ -6,6 +6,7 @@ use ggez::graphics::{self, Color};
 use ggez::input::keyboard;
 use ggez::mint::Point2;
 use ggez::{Context, GameResult};
+use rand::Rng;
 use rand::seq::SliceRandom;
 
 use crate::word::Word;
@@ -19,6 +20,7 @@ const INITIAL_GAME_SPEED: u32 = 50;
 
 pub struct Game {
     screen_height: f32,
+    screen_width: f32,
     key_codes_map: HashMap<keyboard::KeyCode, char>,
     is_game_running: bool,
     source_words: Vec<String>,
@@ -94,6 +96,7 @@ impl Game {
             next_word_loop_length: INITIAL_TIME_UNTIL_NEXT_WORD,
             words: VecDeque::new(),
             screen_height: conf.window_mode.height,
+            screen_width: conf.window_mode.width,
             current_score: 0,
             game_speed: INITIAL_GAME_SPEED
         }
@@ -127,10 +130,10 @@ impl EventHandler for Game {
             self.time_until_next_word -= last_frame_length;
             if self.time_until_next_word <= 0.0 {
                 let word = self.source_words.choose(&mut rand::thread_rng()).unwrap();
-                let top_left = Point2 { x: 600.0, y: 0.0 };
+                let word_position = Point2 { x: rand::thread_rng().gen_range(0.0 .. self.screen_width - 100.0), y: 0.0 };
                 self.words.push_back(Word {
                     value: word.clone(),
-                    position: top_left,
+                    position: word_position,
                     progress_index: 0,
                 });
                 self.time_until_next_word = self.next_word_loop_length;
