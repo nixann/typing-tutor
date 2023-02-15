@@ -8,8 +8,9 @@ use ggez::mint::Point2;
 use ggez::{Context, GameResult};
 use rand::seq::SliceRandom;
 use rand::Rng;
+use unicode_segmentation::UnicodeSegmentation;
 
-use crate::word::Word;
+use crate::word::{Word, WordEffect};
 
 const DESIRED_FPS: u32 = 60;
 
@@ -28,7 +29,12 @@ pub struct Game {
     time_until_next_word: f32,
     next_word_loop_length: f32,
     current_score: u32,
+    life_points: u32,
     game_speed: u32,
+    game_speed_before_slow_down: u32,
+    passed_time_since_game_end: Option<f32>,
+    slow_down_time_left: Option<f32>,
+    spawn_only_short_words_time_left: Option<f32>,
 }
 
 impl Game {
@@ -98,7 +104,12 @@ impl Game {
             screen_height: conf.window_mode.height,
             screen_width: conf.window_mode.width,
             current_score: 0,
+            life_points: 0,
             game_speed: INITIAL_GAME_SPEED,
+            game_speed_before_slow_down: INITIAL_GAME_SPEED,
+            passed_time_since_game_end: None,
+            slow_down_time_left: None,
+            spawn_only_short_words_time_left: None,
         }
     }
 }
@@ -107,7 +118,12 @@ impl EventHandler for Game {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         if let Some(first_word) = self.words.front() {
             if first_word.position.y >= self.screen_height {
-                self.end_game()?
+                if self.life_points > 0 {
+                    self.life_points -= 1;
+                    self.words.pop_front();
+                } else {
+                    self.end_game()?
+                }
             }
         }
 
@@ -117,12 +133,34 @@ impl EventHandler for Game {
 
         while ctx.time.check_update_time(DESIRED_FPS) {
             let last_frame_length = ctx.time.delta().as_secs_f32();
+            if let Some(slow_down_time_left) = self.slow_down_time_left {
+                if slow_down_time_left <= 0.0 {
+                    self.slow_down_time_left = None;
+                    self.game_speed = self.game_speed_before_slow_down;
+                } else {
+                    self.slow_down_time_left = Some(slow_down_time_left - last_frame_length);
+                }
+            }
             self.update_words_positions(self.game_speed as f32 * last_frame_length);
 
-            self.time_until_next_word -= last_frame_length;
             if self.time_until_next_word <= 0.0 {
-                self.spawn_new_word();
+                let mut new_word_limit = None;
+                if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+                    if short_words_time_left <= 0.0 {
+                        self.spawn_only_short_words_time_left = None
+                    } else {
+                        new_word_limit = Some(3);
+                    }
+                }
+                self.spawn_new_word(new_word_limit);
                 self.time_until_next_word = self.next_word_loop_length;
+            } else {
+                self.time_until_next_word -= last_frame_length;
+            }
+
+            if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+                self.spawn_only_short_words_time_left =
+                    Some(short_words_time_left - last_frame_length);
             }
         }
 
@@ -131,6 +169,15 @@ impl EventHandler for Game {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = graphics::Canvas::from_frame(ctx, Color::BLACK);
+        if let Some(time_passed) = self.passed_time_since_game_end {
+            if time_passed < 4.0 {
+                self.draw_end_game_message(&mut canvas);
+                self.passed_time_since_game_end =
+                    Some(time_passed + ctx.time.delta().as_secs_f32());
+            } else {
+                self.passed_time_since_game_end = None
+            }
+        }
         if !self.is_game_running {
             self.draw_home_screen(&mut canvas);
         } else {
@@ -153,7 +200,7 @@ impl EventHandler for Game {
                 }
 
                 if current_word.is_completed() {
-                    self.remove_completed_word();
+                    self.complete_word();
                     if self.next_word_loop_length > 0.01 {
                         self.next_word_loop_length -= 0.01;
                     }
@@ -190,22 +237,49 @@ impl Game {
                 y: self.screen_height - 100.0,
             }),
         );
+
+        let mut life_points_text =
+            graphics::Text::new(format!("LIFE POINTS: {}", self.life_points));
+        life_points_text.set_scale(graphics::PxScale::from(50.0));
+        canvas.draw(
+            &life_points_text,
+            graphics::DrawParam::default().dest(Point2 {
+                x: 30.0,
+                y: self.screen_height - 150.0,
+            }),
+        );
     }
 
     fn draw_words(&self, canvas: &mut Canvas) {
         for word in &self.words {
             let mut text = graphics::Text::new(word.get_display_value());
             text.set_scale(graphics::PxScale::from(40.0));
-            // text.set_layout(layout)
+            let color = word.get_color();
 
-            canvas.draw(&text, graphics::DrawParam::default().dest(word.position));
+            canvas.draw(
+                &text,
+                graphics::DrawParam::default()
+                    .color(color)
+                    .dest(word.position),
+            );
         }
+    }
+
+    fn draw_end_game_message(&self, canvas: &mut Canvas) {
+        let mut text = graphics::Text::new("YOU LOST :(");
+        text.set_scale(graphics::PxScale::from(40.0));
+        canvas.draw(
+            &text,
+            graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 100.0 }),
+        );
     }
 
     fn end_game(&mut self) -> GameResult {
         self.is_game_running = false;
         self.words.clear();
         self.current_score = 0;
+        self.passed_time_since_game_end = Some(0.0);
+        self.life_points = 0;
         Ok(())
     }
 
@@ -218,22 +292,44 @@ impl Game {
         }
     }
 
-    fn spawn_new_word(&mut self) {
-        let word = self.source_words.choose(&mut rand::thread_rng()).unwrap();
+    fn spawn_new_word(&mut self, length_limit: Option<usize>) {
+        let source_words: Vec<String>;
+        if let Some(limit) = length_limit {
+            source_words = self
+                .source_words
+                .iter()
+                .filter(|&word| word.graphemes(true).count() <= limit)
+                .map(|w| w.to_string())
+                .collect();
+        } else {
+            source_words = self.source_words.clone();
+        }
+        let word = source_words.choose(&mut rand::thread_rng()).unwrap();
         let word_position = Point2 {
             x: rand::thread_rng().gen_range(0.0..self.screen_width - 100.0),
             y: 0.0,
         };
-        self.words.push_back(Word {
-            value: word.clone(),
-            position: word_position,
-            progress_index: 0,
-        });
+        self.words.push_back(Word::new(word, word_position, 0));
     }
 
-    fn remove_completed_word(&mut self) {
-        self.words.pop_front();
+    fn complete_word(&mut self) {
+        let word = self.words.pop_front().unwrap();
+        if let Some(effect) = word.effect {
+            self.handle_word_effect(effect)
+        }
         self.current_score += WORD_SCORE;
         self.game_speed += 20;
+    }
+
+    fn handle_word_effect(&mut self, effect: WordEffect) {
+        match effect {
+            WordEffect::AddLife => self.life_points += 1,
+            WordEffect::SlowDown => {
+                self.slow_down_time_left = Some(5.0);
+                self.game_speed_before_slow_down = self.game_speed;
+                self.game_speed = 25;
+            }
+            WordEffect::SpawnOnlyShortWords => self.spawn_only_short_words_time_left = Some(5.0),
+        }
     }
 }
