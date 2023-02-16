@@ -29,7 +29,7 @@ pub struct Game {
     current_score: u32,
     life_points: u32,
     game_speed: u32,
-    game_speed_before_slow_down: u32,
+    game_speed_before_slow_down: Option<u32>,
     passed_time_since_game_end: Option<f32>,
     slow_down_time_left: Option<f32>,
     spawn_only_short_words_time_left: Option<f32>,
@@ -104,7 +104,7 @@ impl Game {
             current_score: 0,
             life_points: 0,
             game_speed: INITIAL_GAME_SPEED,
-            game_speed_before_slow_down: INITIAL_GAME_SPEED,
+            game_speed_before_slow_down: None,
             passed_time_since_game_end: None,
             slow_down_time_left: None,
             spawn_only_short_words_time_left: None,
@@ -133,7 +133,10 @@ impl EventHandler for Game {
         if let Some(slow_down_time_left) = self.slow_down_time_left {
             if slow_down_time_left <= 0.0 {
                 self.slow_down_time_left = None;
-                self.game_speed = self.game_speed_before_slow_down;
+                if let Some(game_speed_before_slow_down) = self.game_speed_before_slow_down {
+                    self.game_speed = game_speed_before_slow_down;
+                    self.game_speed_before_slow_down = None
+                }
             } else {
                 self.slow_down_time_left = Some(slow_down_time_left - last_frame_length);
             }
@@ -164,7 +167,7 @@ impl EventHandler for Game {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let mut canvas = graphics::Canvas::from_frame(ctx, Color::BLACK);
+        let mut canvas = graphics::Canvas::from_frame(ctx, Color::new(0.19, 0.2, 0.45, 0.65));
         if let Some(time_passed) = self.passed_time_since_game_end {
             if time_passed < 4.0 {
                 self.draw_end_game_message(&mut canvas, ctx);
@@ -258,12 +261,11 @@ impl Game {
     fn draw_words(&self, canvas: &mut Canvas) {
         for word in &self.words {
             let mut text = graphics::Text::new(word.get_display_value());
-            self.draw_text(
-                &mut text,
-                graphics::PxScale::from(40.0),
-                word.position,
-                word.get_color(),
-                canvas,
+            text.set_font(word.get_font());
+            text.set_scale(graphics::PxScale::from(40.0));
+            canvas.draw(
+                &text,
+                graphics::DrawParam::default().color(word.get_color()).dest(word.position),
             );
         }
     }
@@ -306,6 +308,7 @@ impl Game {
         self.current_score = 0;
         self.life_points = 0;
         self.time_until_next_word = Some(INITIAL_TIME_UNTIL_NEXT_WORD);
+        self.game_speed = INITIAL_GAME_SPEED;
 
         Ok(())
     }
@@ -357,7 +360,7 @@ impl Game {
             WordEffect::AddLife => self.life_points += 1,
             WordEffect::SlowDown => {
                 self.slow_down_time_left = Some(5.0);
-                self.game_speed_before_slow_down = self.game_speed;
+                self.game_speed_before_slow_down = Some(self.game_speed);
                 self.game_speed = 25;
             }
             WordEffect::SpawnOnlyShortWords => self.spawn_only_short_words_time_left = Some(5.0),

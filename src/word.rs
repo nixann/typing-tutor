@@ -48,17 +48,25 @@ impl Word {
             .skip(self.progress_index)
             .collect()
     }
-    
+
     pub fn update_position(&mut self, delta_y: f32) {
         self.position.y += delta_y
     }
 
     pub fn get_color(&self) -> Color {
         match self.effect {
-            Some(WordEffect::SlowDown) => Color::BLUE,
+            Some(WordEffect::SlowDown) => Color::new(0.06, 0.9, 0.92, 0.65),
             Some(WordEffect::AddLife) => Color::GREEN,
             Some(WordEffect::SpawnOnlyShortWords) => Color::RED,
             None => Color::WHITE,
+        }
+    }
+
+    pub fn get_font(&self) -> String {
+        if let Some(_effect) = self.effect {
+            String::from("SecondaryFont")
+        } else {
+            String::from("PrimaryFont")
         }
     }
 
