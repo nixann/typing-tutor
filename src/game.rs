@@ -271,7 +271,7 @@ impl Game {
     fn draw_end_game_message(&self, canvas: &mut Canvas, ctx: &Context) {
         let mut text = graphics::Text::new("YOU LOST");
         text.set_font("ErrorFont");
-        text.set_scale(graphics::PxScale::from(60.0));
+        text.set_scale(graphics::PxScale::from(100.0));
         let text_width = text.dimensions(ctx).unwrap().w;
         canvas.draw(
             &text,
