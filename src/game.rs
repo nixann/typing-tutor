@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use ggez::conf::Conf;
 use ggez::event::EventHandler;
-use ggez::graphics::{self, Canvas, Color};
+use ggez::graphics::{self, Canvas, Color, Drawable};
 use ggez::input::keyboard;
 use ggez::mint::Point2;
 use ggez::{Context, GameResult};
@@ -167,7 +167,7 @@ impl EventHandler for Game {
         let mut canvas = graphics::Canvas::from_frame(ctx, Color::BLACK);
         if let Some(time_passed) = self.passed_time_since_game_end {
             if time_passed < 4.0 {
-                self.draw_end_game_message(&mut canvas);
+                self.draw_end_game_message(&mut canvas, ctx);
                 self.passed_time_since_game_end =
                     Some(time_passed + ctx.time.delta().as_secs_f32());
             } else {
@@ -175,7 +175,7 @@ impl EventHandler for Game {
             }
         }
         if !self.is_game_running {
-            self.draw_home_screen(&mut canvas);
+            self.draw_home_screen(&mut canvas, ctx);
         } else {
             self.draw_player_stats(&mut canvas);
             self.draw_words(&mut canvas);
@@ -212,16 +212,20 @@ impl EventHandler for Game {
 }
 
 impl Game {
-    fn draw_home_screen(&self, canvas: &mut Canvas) {
+    fn draw_home_screen(&self, canvas: &mut Canvas, ctx: &Context) {
         let mut text = graphics::Text::new("PRESS SPACE TO START");
         text.set_font("SecondaryFont");
 
         text.set_scale(graphics::PxScale::from(50.0));
+        let text_width = text.dimensions(ctx).unwrap().w;
         canvas.draw(
             &text,
             graphics::DrawParam::default()
                 .color(Color::WHITE)
-                .dest(Point2 { x: 350.0, y: 200.0 }),
+                .dest(Point2 {
+                    x: self.screen_width / 2.0 - text_width / 2.0,
+                    y: 200.0,
+                }),
         )
     }
 
@@ -264,12 +268,19 @@ impl Game {
         }
     }
 
-    fn draw_end_game_message(&self, canvas: &mut Canvas) {
-        let mut text = graphics::Text::new("YOU LOST :(");
-        text.set_scale(graphics::PxScale::from(40.0));
+    fn draw_end_game_message(&self, canvas: &mut Canvas, ctx: &Context) {
+        let mut text = graphics::Text::new("YOU LOST");
+        text.set_font("ErrorFont");
+        text.set_scale(graphics::PxScale::from(60.0));
+        let text_width = text.dimensions(ctx).unwrap().w;
         canvas.draw(
             &text,
-            graphics::DrawParam::default().dest(Point2 { x: 350.0, y: 100.0 }),
+            graphics::DrawParam::default()
+                .color(Color::RED)
+                .dest(Point2 {
+                    x: self.screen_width / 2.0 - text_width / 2.0,
+                    y: 100.0,
+                }),
         );
     }
 
