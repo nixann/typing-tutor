@@ -10,6 +10,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::constants::SOURCE_WORDS;
 use crate::word::{Word, WordEffect};
 
 const WORD_SCORE: u32 = 10;
@@ -22,7 +23,6 @@ pub struct Game {
     screen_width: f32,
     key_codes_map: HashMap<keyboard::KeyCode, char>,
     is_game_running: bool,
-    source_words: Vec<String>,
     words: VecDeque<Word>,
     time_until_next_word: Option<f32>,
     next_word_loop_length: f32,
@@ -68,34 +68,6 @@ impl Game {
                 (keyboard::KeyCode::Y, 'y'),
                 (keyboard::KeyCode::Z, 'z'),
             ]),
-            source_words: vec![
-                "the", "of", "and", "a", "to", "in", "is", "you", "that", "it", "he", "was", "for",
-                "on", "are", "with", "as", "his", "they", "be", "at", "one", "have", "this",
-                "from", "or", "had", "by", "hot", "word", "but", "what", "some", "we", "can",
-                "out", "other", "were", "all", "there", "when", "up", "use", "your", "how", "said",
-                "an", "each", "she", "which", "do", "their", "time", "if", "will", "way", "about",
-                "many", "then", "them", "write", "would", "like", "so", "these", "her", "long",
-                "make", "thing", "see", "him", "two", "has", "look", "more", "day", "could", "go",
-                "come", "did", "number", "sound", "no", "most", "people", "my", "over", "know",
-                "water", "than", "call", "first", "who", "may", "down", "side", "been", "now",
-                "find", "any", "new", "work", "part", "take", "get", "place", "made", "live",
-                "where", "after", "back", "little", "only", "round", "man", "year", "came", "show",
-                "every", "good", "me", "give", "our", "under", "name", "very", "through", "just",
-                "form", "sentence", "great", "think", "say", "help", "low", "line", "differ",
-                "turn", "cause", "much", "mean", "before", "move", "right", "boy", "old", "too",
-                "same", "tell", "does", "set", "three", "want", "air", "well", "also", "play",
-                "small", "end", "put", "home", "read", "hand", "port", "large", "spell", "add",
-                "even", "land", "here", "must", "big", "high", "such", "follow", "act", "why",
-                "ask", "men", "change", "went", "light", "kind", "off", "need", "house", "picture",
-                "try", "us", "again", "animal", "point", "mother", "world", "near", "build",
-                "self", "earth", "father", "head", "stand", "own", "page", "should", "country",
-                "found", "answer", "school", "grow", "study", "still", "learn", "plant", "cover",
-                "food", "sun", "four", "between", "state", "keep", "eye", "never", "last", "let",
-                "thought", "city",
-            ]
-            .iter()
-            .map(|&s| s.to_string())
-            .collect(),
             time_until_next_word: None,
             next_word_loop_length: INITIAL_TIME_UNTIL_NEXT_WORD,
             words: VecDeque::new(),
@@ -265,7 +237,9 @@ impl Game {
             text.set_scale(graphics::PxScale::from(40.0));
             canvas.draw(
                 &text,
-                graphics::DrawParam::default().color(word.get_color()).dest(word.position),
+                graphics::DrawParam::default()
+                    .color(word.get_color())
+                    .dest(word.position),
             );
         }
     }
@@ -327,16 +301,15 @@ impl Game {
     }
 
     fn spawn_new_word(&mut self, length_limit: Option<usize>) {
-        let source_words: Vec<String>;
+        let source_words: Vec<&str>;
         if let Some(limit) = length_limit {
-            source_words = self
-                .source_words
+            source_words = SOURCE_WORDS
                 .iter()
                 .filter(|&word| word.graphemes(true).count() <= limit)
-                .map(|w| w.to_string())
+                .map(|w| *w)
                 .collect();
         } else {
-            source_words = self.source_words.clone();
+            source_words = Vec::from(SOURCE_WORDS)
         }
         let word = source_words.choose(&mut rand::thread_rng()).unwrap();
         let word_position = Point2 {
