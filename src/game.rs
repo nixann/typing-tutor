@@ -172,8 +172,8 @@ impl EventHandler for Game {
 
                 if current_word.is_completed() {
                     self.complete_word();
-                    if self.next_word_loop_length > 0.01 {
-                        self.next_word_loop_length -= 0.01;
+                    if self.next_word_loop_length > 0.007 {
+                        self.next_word_loop_length -= 0.007;
                     }
                 }
             }
@@ -313,7 +313,7 @@ impl Game {
         }
         let word = source_words.choose(&mut rand::thread_rng()).unwrap();
         let word_position = Point2 {
-            x: rand::thread_rng().gen_range(0.0..self.screen_width - 100.0),
+            x: rand::thread_rng().gen_range(0.0..self.screen_width - 200.0),
             y: 0.0,
         };
         self.words.push_back(Word::new(word, word_position, 0));
@@ -325,7 +325,7 @@ impl Game {
             self.handle_word_effect(effect)
         }
         self.current_score += WORD_SCORE;
-        self.game_speed += 20;
+        self.game_speed += 10;
     }
 
     fn handle_word_effect(&mut self, effect: WordEffect) {
