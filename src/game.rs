@@ -12,8 +12,6 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::word::{Word, WordEffect};
 
-const DESIRED_FPS: u32 = 60;
-
 const WORD_SCORE: u32 = 10;
 
 const INITIAL_TIME_UNTIL_NEXT_WORD: f32 = 1.0;
@@ -131,38 +129,35 @@ impl EventHandler for Game {
             return Ok(());
         }
 
-        while ctx.time.check_update_time(DESIRED_FPS) {
-            let last_frame_length = ctx.time.delta().as_secs_f32();
-            if let Some(slow_down_time_left) = self.slow_down_time_left {
-                if slow_down_time_left <= 0.0 {
-                    self.slow_down_time_left = None;
-                    self.game_speed = self.game_speed_before_slow_down;
-                } else {
-                    self.slow_down_time_left = Some(slow_down_time_left - last_frame_length);
-                }
+        let last_frame_length = ctx.time.delta().as_secs_f32();
+        if let Some(slow_down_time_left) = self.slow_down_time_left {
+            if slow_down_time_left <= 0.0 {
+                self.slow_down_time_left = None;
+                self.game_speed = self.game_speed_before_slow_down;
+            } else {
+                self.slow_down_time_left = Some(slow_down_time_left - last_frame_length);
             }
-            self.update_words_positions(self.game_speed as f32 * last_frame_length);
-            if let Some(time_until_next_word) = self.time_until_next_word {
-                if time_until_next_word <= 0.0 {
-                    let mut new_word_limit = None;
-                    if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
-                        if short_words_time_left <= 0.0 {
-                            self.spawn_only_short_words_time_left = None
-                        } else {
-                            new_word_limit = Some(3);
-                        }
+        }
+        self.update_words_positions(self.game_speed as f32 * last_frame_length);
+        if let Some(time_until_next_word) = self.time_until_next_word {
+            if time_until_next_word <= 0.0 {
+                let mut new_word_limit = None;
+                if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+                    if short_words_time_left <= 0.0 {
+                        self.spawn_only_short_words_time_left = None
+                    } else {
+                        new_word_limit = Some(3);
                     }
-                    self.spawn_new_word(new_word_limit);
-                    self.time_until_next_word = Some(self.next_word_loop_length);
-                } else {
-                    self.time_until_next_word = Some(time_until_next_word - last_frame_length);
                 }
+                self.spawn_new_word(new_word_limit);
+                self.time_until_next_word = Some(self.next_word_loop_length);
+            } else {
+                self.time_until_next_word = Some(time_until_next_word - last_frame_length);
             }
+        }
 
-            if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
-                self.spawn_only_short_words_time_left =
-                    Some(short_words_time_left - last_frame_length);
-            }
+        if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+            self.spawn_only_short_words_time_left = Some(short_words_time_left - last_frame_length);
         }
 
         Ok(())
@@ -312,11 +307,8 @@ impl Game {
     }
 
     fn update_words_positions(&mut self, delta_y: f32) {
-        for mut word in &mut self.words {
-            word.position = Point2 {
-                x: word.position.x,
-                y: word.position.y + delta_y,
-            }
+        for word in &mut self.words {
+            word.update_position(delta_y)
         }
     }
 

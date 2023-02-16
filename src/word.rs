@@ -48,6 +48,10 @@ impl Word {
             .skip(self.progress_index)
             .collect()
     }
+    
+    pub fn update_position(&mut self, delta_y: f32) {
+        self.position.y += delta_y
+    }
 
     pub fn get_color(&self) -> Color {
         match self.effect {
