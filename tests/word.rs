@@ -28,7 +28,7 @@ mod tests {
         word.effect = Some(WordEffect::SpawnOnlyShortWords);
 
         assert_eq!(word.get_font(), "SecondaryFont");
-        assert_eq!(word.get_color(), Color::RED);
+        assert_eq!(word.get_color(), Color::YELLOW);
     }
 
     #[test]

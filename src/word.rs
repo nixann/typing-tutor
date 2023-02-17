@@ -57,7 +57,7 @@ impl Word {
         match self.effect {
             Some(WordEffect::SlowDown) => Color::new(0.06, 0.9, 0.92, 0.65),
             Some(WordEffect::AddLife) => Color::GREEN,
-            Some(WordEffect::SpawnOnlyShortWords) => Color::RED,
+            Some(WordEffect::SpawnOnlyShortWords) => Color::YELLOW,
             None => Color::WHITE,
         }
     }
