@@ -268,6 +268,7 @@ impl Game {
         self.life_points = 0;
         self.time_until_next_word = Some(INITIAL_TIME_UNTIL_NEXT_WORD);
         self.game_speed = INITIAL_GAME_SPEED;
+        self.passed_time_since_game_end = None;
 
         Ok(())
     }
