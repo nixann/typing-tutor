@@ -18,17 +18,48 @@ const WORD_SCORE: u32 = 10;
 const INITIAL_TIME_UNTIL_NEXT_WORD: f32 = 1.0;
 const INITIAL_GAME_SPEED: u32 = 50;
 
+pub fn create_key_codes_map() -> HashMap<keyboard::KeyCode, char> {
+    HashMap::from([
+        (keyboard::KeyCode::A, 'a'),
+        (keyboard::KeyCode::B, 'b'),
+        (keyboard::KeyCode::C, 'c'),
+        (keyboard::KeyCode::D, 'd'),
+        (keyboard::KeyCode::E, 'e'),
+        (keyboard::KeyCode::F, 'f'),
+        (keyboard::KeyCode::G, 'g'),
+        (keyboard::KeyCode::H, 'h'),
+        (keyboard::KeyCode::I, 'i'),
+        (keyboard::KeyCode::J, 'j'),
+        (keyboard::KeyCode::K, 'k'),
+        (keyboard::KeyCode::L, 'l'),
+        (keyboard::KeyCode::M, 'm'),
+        (keyboard::KeyCode::N, 'n'),
+        (keyboard::KeyCode::O, 'o'),
+        (keyboard::KeyCode::P, 'p'),
+        (keyboard::KeyCode::Q, 'q'),
+        (keyboard::KeyCode::R, 'r'),
+        (keyboard::KeyCode::S, 's'),
+        (keyboard::KeyCode::T, 't'),
+        (keyboard::KeyCode::U, 'u'),
+        (keyboard::KeyCode::V, 'v'),
+        (keyboard::KeyCode::W, 'w'),
+        (keyboard::KeyCode::X, 'x'),
+        (keyboard::KeyCode::Y, 'y'),
+        (keyboard::KeyCode::Z, 'z'),
+    ])
+}
+
 pub struct Game {
     screen_height: f32,
     screen_width: f32,
     key_codes_map: HashMap<keyboard::KeyCode, char>,
     is_game_running: bool,
     words: VecDeque<Word>,
-    time_until_next_word: Option<f32>,
     next_word_loop_length: f32,
     current_score: u32,
     life_points: u32,
     game_speed: u32,
+    time_until_next_word: Option<f32>,
     game_speed_before_slow_down: Option<u32>,
     passed_time_since_game_end: Option<f32>,
     slow_down_time_left: Option<f32>,
@@ -40,35 +71,7 @@ impl Game {
         // Load/create resources such as images here.
         Game {
             is_game_running: false,
-            key_codes_map: HashMap::from([
-                (keyboard::KeyCode::A, 'a'),
-                (keyboard::KeyCode::B, 'b'),
-                (keyboard::KeyCode::C, 'c'),
-                (keyboard::KeyCode::D, 'd'),
-                (keyboard::KeyCode::E, 'e'),
-                (keyboard::KeyCode::F, 'f'),
-                (keyboard::KeyCode::G, 'g'),
-                (keyboard::KeyCode::H, 'h'),
-                (keyboard::KeyCode::I, 'i'),
-                (keyboard::KeyCode::J, 'j'),
-                (keyboard::KeyCode::K, 'k'),
-                (keyboard::KeyCode::L, 'l'),
-                (keyboard::KeyCode::M, 'm'),
-                (keyboard::KeyCode::N, 'n'),
-                (keyboard::KeyCode::O, 'o'),
-                (keyboard::KeyCode::P, 'p'),
-                (keyboard::KeyCode::Q, 'q'),
-                (keyboard::KeyCode::R, 'r'),
-                (keyboard::KeyCode::S, 's'),
-                (keyboard::KeyCode::T, 't'),
-                (keyboard::KeyCode::U, 'u'),
-                (keyboard::KeyCode::V, 'v'),
-                (keyboard::KeyCode::W, 'w'),
-                (keyboard::KeyCode::X, 'x'),
-                (keyboard::KeyCode::Y, 'y'),
-                (keyboard::KeyCode::Z, 'z'),
-            ]),
-            time_until_next_word: None,
+            key_codes_map: create_key_codes_map(),
             next_word_loop_length: INITIAL_TIME_UNTIL_NEXT_WORD,
             words: VecDeque::new(),
             screen_height: conf.window_mode.height,
@@ -76,6 +79,7 @@ impl Game {
             current_score: 0,
             life_points: 0,
             game_speed: INITIAL_GAME_SPEED,
+            time_until_next_word: None,
             game_speed_before_slow_down: None,
             passed_time_since_game_end: None,
             slow_down_time_left: None,
@@ -307,11 +311,11 @@ impl Game {
 
     fn complete_word(&mut self) {
         let word = self.words.pop_front().unwrap();
+        self.current_score += WORD_SCORE;
+        self.game_speed += 10;
         if let Some(effect) = word.effect {
             self.handle_word_effect(effect)
         }
-        self.current_score += WORD_SCORE;
-        self.game_speed += 10;
     }
 
     fn handle_word_effect(&mut self, effect: WordEffect) {
@@ -324,5 +328,199 @@ impl Game {
             }
             WordEffect::SpawnOnlyShortWords => self.spawn_only_short_words_time_left = Some(5.0),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ggez::conf::WindowMode;
+
+    use super::*;
+
+    fn create_game() -> Game {
+        let conf = Conf::new().window_mode(WindowMode {
+            width: 1200.0,
+            height: 1000.0,
+            ..Default::default()
+        });
+        Game::new(&conf)
+    }
+
+    #[test]
+    fn it_initializes_game_with_defautl_state() {
+        let game = create_game();
+
+        assert_eq!(game.screen_height, 1000.0);
+        assert_eq!(game.screen_width, 1200.0);
+        assert_eq!(game.key_codes_map, create_key_codes_map());
+        assert_eq!(game.is_game_running, false);
+        assert_eq!(game.words.len(), 0);
+        assert_eq!(game.next_word_loop_length, INITIAL_TIME_UNTIL_NEXT_WORD);
+        assert_eq!(game.current_score, 0);
+        assert_eq!(game.life_points, 0);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED);
+        assert!(game.time_until_next_word.is_none());
+        assert!(game.game_speed_before_slow_down.is_none());
+        assert!(game.passed_time_since_game_end.is_none());
+        assert!(game.slow_down_time_left.is_none());
+        assert!(game.spawn_only_short_words_time_left.is_none());
+    }
+
+    #[test]
+    fn it_starts_the_game_correctly() {
+        let mut game = create_game();
+
+        let start_res = game.start_game();
+        assert!(start_res.is_ok());
+
+        assert!(game.is_game_running);
+        assert_eq!(game.current_score, 0);
+        assert_eq!(game.life_points, 0);
+        assert_eq!(
+            game.time_until_next_word,
+            Some(INITIAL_TIME_UNTIL_NEXT_WORD)
+        );
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED);
+        assert_eq!(game.passed_time_since_game_end, None);
+    }
+
+    #[test]
+    fn it_ends_the_game_correctly() {
+        let mut game = create_game();
+
+        game.is_game_running = true;
+
+        let word = Word::new("word", Point2 { x: 0.0, y: 0.0 }, 0);
+        game.words = VecDeque::from([word]);
+
+        let end_res = game.end_game();
+
+        assert!(end_res.is_ok());
+
+        assert_eq!(game.is_game_running, false);
+        assert_eq!(game.words.len(), 0);
+        assert_eq!(game.passed_time_since_game_end, Some(0.0))
+    }
+
+    #[test]
+    fn it_updates_words_positions_correctly() {
+        let mut game = create_game();
+
+        let word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.update_words_positions(0.2);
+
+        assert_eq!(game.words.front().unwrap().position.y, 1.2);
+        assert_eq!(game.words.back().unwrap().position.y, 2.2);
+    }
+
+    #[test]
+    fn it_spawns_a_new_word_correctly() {
+        let mut game = create_game();
+
+        let word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.spawn_new_word(None);
+        assert_eq!(game.words.len(), 3);
+        assert!(game.words.back().unwrap().position.x < 1000.0)
+    }
+
+    #[test]
+    fn it_spawns_a_new_word_with_len_limit_correctly() {
+        let mut game = create_game();
+
+        let word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.spawn_new_word(Some(3));
+        assert_eq!(game.words.len(), 3);
+        assert!(game.words.back().unwrap().position.x < 1000.0);
+        assert!(game.words.back().unwrap().value.graphemes(true).count() <= 3);
+    }
+
+    #[test]
+    fn it_completes_a_word_without_effect_correctly() {
+        let mut game = create_game();
+
+        game.current_score = 10;
+        game.game_speed = INITIAL_GAME_SPEED;
+        let word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.complete_word();
+
+        assert_eq!(game.words.len(), 1);
+        assert_eq!(game.current_score, 20);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 10);
+    }
+
+    #[test]
+    fn it_completes_a_word_with_add_life_effect_correctly() {
+        let mut game = create_game();
+
+        game.current_score = 10;
+        game.game_speed = INITIAL_GAME_SPEED;
+        game.life_points = 0;
+        let mut word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        word_1.effect = Some(WordEffect::AddLife);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.complete_word();
+
+        assert_eq!(game.words.len(), 1);
+        assert_eq!(game.current_score, 20);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 10);
+        assert_eq!(game.life_points, 1);
+    }
+
+    #[test]
+    fn it_completes_a_word_with_slow_down_effect_correctly() {
+        let mut game = create_game();
+
+        game.current_score = 10;
+        game.game_speed = INITIAL_GAME_SPEED;
+        game.life_points = 0;
+        let mut word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        word_1.effect = Some(WordEffect::SlowDown);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.complete_word();
+
+        assert_eq!(game.words.len(), 1);
+        assert_eq!(game.current_score, 20);
+        assert_eq!(game.game_speed, 25);
+        assert_eq!(
+            game.game_speed_before_slow_down,
+            Some(INITIAL_GAME_SPEED + 10)
+        );
+        assert_eq!(game.slow_down_time_left, Some(5.0));
+    }
+
+    #[test]
+    fn it_completes_a_word_with_short_words_spawn_effect_correctly() {
+        let mut game = create_game();
+
+        game.current_score = 10;
+        game.game_speed = INITIAL_GAME_SPEED;
+        game.life_points = 0;
+        let mut word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        word_1.effect = Some(WordEffect::SpawnOnlyShortWords);
+        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        game.words = VecDeque::from([word_1, word_2]);
+
+        game.complete_word();
+
+        assert_eq!(game.words.len(), 1);
+        assert_eq!(game.current_score, 20);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 10);
+        assert_eq!(game.spawn_only_short_words_time_left, Some(5.0));
     }
 }
