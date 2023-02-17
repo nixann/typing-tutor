@@ -68,7 +68,6 @@ pub struct Game {
 
 impl Game {
     pub fn new(conf: &Conf) -> Game {
-        // Load/create resources such as images here.
         Game {
             is_game_running: false,
             key_codes_map: create_key_codes_map(),
@@ -106,18 +105,13 @@ impl EventHandler for Game {
         }
 
         let last_frame_length = ctx.time.delta().as_secs_f32();
+
         if let Some(slow_down_time_left) = self.slow_down_time_left {
-            if slow_down_time_left <= 0.0 {
-                self.slow_down_time_left = None;
-                if let Some(game_speed_before_slow_down) = self.game_speed_before_slow_down {
-                    self.game_speed = game_speed_before_slow_down;
-                    self.game_speed_before_slow_down = None
-                }
-            } else {
-                self.slow_down_time_left = Some(slow_down_time_left - last_frame_length);
-            }
+            self.update_slow_down_time_left(slow_down_time_left, last_frame_length);
         }
+
         self.update_words_positions(self.game_speed as f32 * last_frame_length);
+
         if let Some(time_until_next_word) = self.time_until_next_word {
             if time_until_next_word <= 0.0 {
                 let mut new_word_limit = None;
@@ -314,11 +308,11 @@ impl Game {
         self.current_score += WORD_SCORE;
         self.game_speed += 10;
         if let Some(effect) = word.effect {
-            self.handle_word_effect(effect)
+            self.apply_word_effect(effect)
         }
     }
 
-    fn handle_word_effect(&mut self, effect: WordEffect) {
+    fn apply_word_effect(&mut self, effect: WordEffect) {
         match effect {
             WordEffect::AddLife => self.life_points += 1,
             WordEffect::SlowDown => {
@@ -327,6 +321,18 @@ impl Game {
                 self.game_speed = 25;
             }
             WordEffect::SpawnOnlyShortWords => self.spawn_only_short_words_time_left = Some(5.0),
+        }
+    }
+    
+    fn update_slow_down_time_left(&mut self, current_time_left: f32, last_frame_length: f32) {
+        if current_time_left <= 0.0 {
+            self.slow_down_time_left = None;
+            if let Some(game_speed_before_slow_down) = self.game_speed_before_slow_down {
+                self.game_speed = game_speed_before_slow_down;
+                self.game_speed_before_slow_down = None
+            }
+        } else {
+            self.slow_down_time_left = Some(current_time_left - last_frame_length);
         }
     }
 }
