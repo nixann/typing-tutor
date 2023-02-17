@@ -117,6 +117,7 @@ fn get_color_by_label(label: String) -> Color {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum MenuType {
     Main,
     Settings,
@@ -517,7 +518,12 @@ mod tests {
 
         assert_eq!(game.screen_height, 1000.0);
         assert_eq!(game.screen_width, 1200.0);
-        assert_eq!(game.key_codes_map, create_key_codes_map());
+        assert_eq!(game.bg_color, Color::new(0.19, 0.2, 0.45, 0.65));
+        assert_eq!(game.current_menu_type, MenuType::Main);
+        assert_eq!(game.main_menu, create_main_menu());
+        assert_eq!(game.settings_menu, create_settings_menu());
+        assert_eq!(game.fonts_menu, create_fonts_menu());
+        assert_eq!(game.bg_colors_menu, create_bg_colors_menu());
         assert_eq!(game.is_game_running, false);
         assert_eq!(game.words.len(), 0);
         assert_eq!(game.next_word_loop_length, INITIAL_TIME_UNTIL_NEXT_WORD);
@@ -565,6 +571,102 @@ mod tests {
         assert_eq!(game.is_game_running, false);
         assert_eq!(game.words.len(), 0);
         assert_eq!(game.passed_time_since_game_end, Some(0.0))
+    }
+
+    #[test]
+    fn it_starts_the_game_when_play_is_selected_from_main_menu() {
+        let mut game = create_game();
+
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert!(game.is_game_running)
+    }
+
+    #[test]
+    fn it_opens_the_settings_menu_when_settings_is_selected_from_main_menu() {
+        let mut game = create_game();
+
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.current_menu_type, MenuType::Settings);
+    }
+
+    #[test]
+    fn it_opens_the_fonts_menu_when_fonts_is_selected_from_settings_menu() {
+        let mut game = create_game();
+
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_settings_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.current_menu_type, MenuType::Fonts);
+    }
+
+    #[test]
+    fn it_sets_the_selected_font_from_fonts_menu() {
+        let mut game = create_game();
+
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_settings_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.words_font, String::from("GravitasOne"));
+
+        let res = game.handle_input_key_in_fonts_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_fonts_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.words_font, String::from("Creepster"));
+    }
+
+    #[test]
+    fn it_opens_the_bg_colors_menu_when_bg_colors_is_selected_from_settings_menu() {
+        let mut game = create_game();
+
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_settings_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_settings_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.current_menu_type, MenuType::BgColors);
+    }
+
+    #[test]
+    fn it_sets_the_selected_bg_color_from_bg_colors_menu() {
+        let mut game = create_game();
+
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_main_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_settings_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_settings_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.bg_color, get_color_by_label(String::from("PURPLE")));
+
+        let res = game.handle_input_key_in_bg_colors_menu(keyboard::KeyCode::Down);
+        assert!(res.is_ok());
+        let res = game.handle_input_key_in_bg_colors_menu(keyboard::KeyCode::Space);
+        assert!(res.is_ok());
+
+        assert_eq!(game.bg_color, get_color_by_label(String::from("GREEN")));
     }
 
     #[test]

@@ -1,9 +1,11 @@
 use ggez::{graphics::{Canvas, self, Drawable, Color}, Context, mint::Point2};
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct MenuOption {
     pub label: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Menu {
     pub options: Vec<MenuOption>,
     pub selected_option_index: usize,
