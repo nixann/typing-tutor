@@ -12,7 +12,7 @@ use rand::Rng;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::constants::SOURCE_WORDS;
-use crate::menu::{Menu, MenuOption};
+use crate::menu::{Menu};
 use crate::word::{Word, WordEffect};
 
 const WORD_SCORE: u32 = 10;
@@ -52,57 +52,29 @@ pub fn create_key_codes_map() -> HashMap<keyboard::KeyCode, char> {
 }
 
 fn create_main_menu() -> Menu {
-    let menu_opt_1 = MenuOption {
-        label: "PLAY".to_string(),
-    };
-
-    let menu_opt_2 = MenuOption {
-        label: "SETTINGS".to_string(),
-    };
     Menu {
-        options: Vec::from([menu_opt_1, menu_opt_2]),
+        options: Vec::from(["PLAY".to_string(), "SETTINGS".to_string()]),
         selected_option_index: 0,
     }
 }
 
 fn create_settings_menu() -> Menu {
-    let menu_opt_1 = MenuOption {
-        label: "CHANGE FONT".to_string(),
-    };
-
-    let menu_opt_2 = MenuOption {
-        label: "CHANGE BG COLOR".to_string(),
-    };
     Menu {
-        options: Vec::from([menu_opt_1, menu_opt_2]),
+        options: Vec::from(["CHANGE FONT".to_string(), "CHANGE BG COLOR".to_string()]),
         selected_option_index: 0,
     }
 }
 
 fn create_fonts_menu() -> Menu {
-    let menu_opt_1 = MenuOption {
-        label: "GravitasOne".to_string(),
-    };
-
-    let menu_opt_2 = MenuOption {
-        label: "Creepster".to_string(),
-    };
     Menu {
-        options: Vec::from([menu_opt_1, menu_opt_2]),
+        options: Vec::from(["GravitasOne".to_string(), "Creepster".to_string()]),
         selected_option_index: 0,
     }
 }
 
 fn create_bg_colors_menu() -> Menu {
-    let menu_opt_1 = MenuOption {
-        label: "PURPLE".to_string(),
-    };
-
-    let menu_opt_2 = MenuOption {
-        label: "GREEN".to_string(),
-    };
     Menu {
-        options: Vec::from([menu_opt_1, menu_opt_2]),
+        options: Vec::from(["PURPLE".to_string(), "GREEN".to_string()]),
         selected_option_index: 0,
     }
 }
@@ -331,9 +303,9 @@ impl Game {
             keyboard::KeyCode::Down => self.main_menu.handle_move_down(),
             keyboard::KeyCode::Space => {
                 let selected_option = self.main_menu.get_selected_option();
-                if selected_option.label == String::from("PLAY") {
+                if *selected_option == String::from("PLAY") {
                     self.start_game()?
-                } else if selected_option.label == String::from("SETTINGS") {
+                } else if *selected_option == String::from("SETTINGS") {
                     self.current_menu_type = MenuType::Settings
                 }
             }
@@ -350,9 +322,9 @@ impl Game {
             keyboard::KeyCode::Left => self.current_menu_type = MenuType::Main,
             keyboard::KeyCode::Space => {
                 let selected_option = self.settings_menu.get_selected_option();
-                if selected_option.label == String::from("CHANGE FONT") {
+                if *selected_option == String::from("CHANGE FONT") {
                     self.current_menu_type = MenuType::Fonts;
-                } else if selected_option.label == String::from("CHANGE BG COLOR") {
+                } else if *selected_option == String::from("CHANGE BG COLOR") {
                     self.current_menu_type = MenuType::BgColors;
                 }
             }
@@ -368,7 +340,7 @@ impl Game {
             keyboard::KeyCode::Down => self.fonts_menu.handle_move_down(),
             keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
             keyboard::KeyCode::Space => {
-                self.words_font = self.fonts_menu.get_selected_option().label.clone()
+                self.words_font = self.fonts_menu.get_selected_option().clone()
             }
             _ => (),
         };
@@ -383,7 +355,7 @@ impl Game {
             keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
             keyboard::KeyCode::Space => {
                 self.bg_color =
-                    get_color_by_label(self.bg_colors_menu.get_selected_option().label.clone())
+                    get_color_by_label(self.bg_colors_menu.get_selected_option().clone())
             }
             _ => (),
         };

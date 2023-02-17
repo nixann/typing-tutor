@@ -1,13 +1,9 @@
 use ggez::{graphics::{Canvas, self, Drawable, Color}, Context, mint::Point2};
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct MenuOption {
-    pub label: String,
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Menu {
-    pub options: Vec<MenuOption>,
+    pub options: Vec<String>,
     pub selected_option_index: usize,
 }
 
@@ -19,7 +15,7 @@ pub enum MenuMove {
 impl Menu {
     pub fn draw(&self, canvas: &mut Canvas, ctx: &Context, screen_width: f32) {
         for (idx, opt) in self.options.iter().enumerate() {
-            let mut text = graphics::Text::new(&opt.label);
+            let mut text = graphics::Text::new(opt);
             text.set_font("BungeeShade");
 
             text.set_scale(graphics::PxScale::from(50.0));
@@ -37,7 +33,7 @@ impl Menu {
         }
     }
 
-    pub fn get_selected_option(&self) -> &MenuOption {
+    pub fn get_selected_option(&self) -> &String {
         &self.options[self.selected_option_index]
     }
 
