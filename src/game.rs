@@ -172,8 +172,8 @@ impl EventHandler for Game {
 
                 if current_word.is_completed() {
                     self.complete_word();
-                    if self.next_word_loop_length > 0.007 {
-                        self.next_word_loop_length -= 0.007;
+                    if self.next_word_loop_length > 0.001 {
+                        self.next_word_loop_length -= 0.001;
                     }
                 }
             }
