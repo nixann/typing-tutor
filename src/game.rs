@@ -5,6 +5,7 @@ use ggez::event::EventHandler;
 use ggez::graphics::{self, Canvas, Color, Drawable};
 use ggez::input::keyboard;
 use ggez::mint::Point2;
+use ggez::winit::event::VirtualKeyCode;
 use ggez::{Context, GameResult};
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -322,6 +323,72 @@ impl Game {
             self.slow_down_time_left = Some(current_time_left - last_frame_length);
         }
     }
+
+    fn handle_input_key_in_main_menu(&mut self, input_key_code: VirtualKeyCode) -> GameResult {
+        match input_key_code {
+            keyboard::KeyCode::Up => self.main_menu.handle_move_up(),
+            keyboard::KeyCode::Down => self.main_menu.handle_move_down(),
+            keyboard::KeyCode::Space => {
+                let selected_option = self.main_menu.get_selected_option();
+                if selected_option.label == String::from("PLAY") {
+                    self.start_game()?
+                } else if selected_option.label == String::from("SETTINGS") {
+                    self.current_menu_type = MenuType::Settings
+                }
+            }
+            _ => (),
+        };
+
+        Ok(())
+    }
+
+    fn handle_input_key_in_settings_menu(&mut self, input_key_code: VirtualKeyCode) -> GameResult {
+        match input_key_code {
+            keyboard::KeyCode::Up => self.settings_menu.handle_move_up(),
+            keyboard::KeyCode::Down => self.settings_menu.handle_move_down(),
+            keyboard::KeyCode::Left => self.current_menu_type = MenuType::Main,
+            keyboard::KeyCode::Space => {
+                let selected_option = self.settings_menu.get_selected_option();
+                if selected_option.label == String::from("CHANGE FONT") {
+                    self.current_menu_type = MenuType::Fonts;
+                } else if selected_option.label == String::from("CHANGE BG COLOR") {
+                    self.current_menu_type = MenuType::BgColors;
+                }
+            }
+            _ => (),
+        };
+
+        Ok(())
+    }
+
+    fn handle_input_key_in_fonts_menu(&mut self, input_key_code: VirtualKeyCode) -> GameResult {
+        match input_key_code {
+            keyboard::KeyCode::Up => self.fonts_menu.handle_move_up(),
+            keyboard::KeyCode::Down => self.fonts_menu.handle_move_down(),
+            keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
+            keyboard::KeyCode::Space => {
+                self.words_font = self.fonts_menu.get_selected_option().label.clone()
+            }
+            _ => (),
+        };
+
+        Ok(())
+    }
+
+    fn handle_input_key_in_bg_colors_menu(&mut self, input_key_code: VirtualKeyCode) -> GameResult {
+        match input_key_code {
+            keyboard::KeyCode::Up => self.bg_colors_menu.handle_move_up(),
+            keyboard::KeyCode::Down => self.bg_colors_menu.handle_move_down(),
+            keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
+            keyboard::KeyCode::Space => {
+                self.bg_color =
+                    get_color_by_label(self.bg_colors_menu.get_selected_option().label.clone())
+            }
+            _ => (),
+        };
+
+        Ok(())
+    }
 }
 
 impl EventHandler for Game {
@@ -415,57 +482,12 @@ impl EventHandler for Game {
                 }
             } else {
                 match self.current_menu_type {
-                    MenuType::Main => match input_key_code {
-                        keyboard::KeyCode::Up => self.main_menu.handle_move_up(),
-                        keyboard::KeyCode::Down => self.main_menu.handle_move_down(),
-                        keyboard::KeyCode::Space => {
-                            let selected_option = self.main_menu.get_selected_option();
-                            if selected_option.label == String::from("PLAY") {
-                                self.start_game()?
-                            } else if selected_option.label == String::from("SETTINGS") {
-                                self.current_menu_type = MenuType::Settings;
-                            }
-                        }
-                        _ => (),
-                    },
-
-                    MenuType::Settings => match input_key_code {
-                        keyboard::KeyCode::Up => self.settings_menu.handle_move_up(),
-                        keyboard::KeyCode::Down => self.settings_menu.handle_move_down(),
-                        keyboard::KeyCode::Left => self.current_menu_type = MenuType::Main,
-                        keyboard::KeyCode::Space => {
-                            let selected_option = self.settings_menu.get_selected_option();
-                            if selected_option.label == String::from("CHANGE FONT") {
-                                self.current_menu_type = MenuType::Fonts;
-                            } else if selected_option.label == String::from("CHANGE BG COLOR") {
-                                self.current_menu_type = MenuType::BgColors;
-                            }
-                        }
-                        _ => (),
-                    },
-
-                    MenuType::Fonts => match input_key_code {
-                        keyboard::KeyCode::Up => self.fonts_menu.handle_move_up(),
-                        keyboard::KeyCode::Down => self.fonts_menu.handle_move_down(),
-                        keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
-                        keyboard::KeyCode::Space => {
-                            self.words_font = self.fonts_menu.get_selected_option().label.clone()
-                        }
-                        _ => (),
-                    },
-
-                    MenuType::BgColors => match input_key_code {
-                        keyboard::KeyCode::Up => self.bg_colors_menu.handle_move_up(),
-                        keyboard::KeyCode::Down => self.bg_colors_menu.handle_move_down(),
-                        keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
-                        keyboard::KeyCode::Space => {
-                            self.bg_color = get_color_by_label(
-                                self.bg_colors_menu.get_selected_option().label.clone(),
-                            )
-                        }
-                        _ => (),
-                    },
-
+                    MenuType::Main => self.handle_input_key_in_main_menu(input_key_code)?,
+                    MenuType::Settings => self.handle_input_key_in_settings_menu(input_key_code)?,
+                    MenuType::Fonts => self.handle_input_key_in_fonts_menu(input_key_code)?,
+                    MenuType::BgColors => {
+                        self.handle_input_key_in_bg_colors_menu(input_key_code)?
+                    }
                     MenuType::None => (),
                 }
             }
