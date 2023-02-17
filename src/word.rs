@@ -62,14 +62,6 @@ impl Word {
         }
     }
 
-    pub fn get_font(&self) -> String {
-        if let Some(_effect) = self.effect {
-            String::from("SecondaryFont")
-        } else {
-            String::from("PrimaryFont")
-        }
-    }
-
     pub fn handle_typed_letter(&mut self, letter: char) {
         let current_letter = self.value.chars().nth(self.progress_index).unwrap();
 

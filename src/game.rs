@@ -11,6 +11,7 @@ use rand::Rng;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::constants::SOURCE_WORDS;
+use crate::menu::{Menu, MenuOption};
 use crate::word::{Word, WordEffect};
 
 const WORD_SCORE: u32 = 10;
@@ -49,16 +50,97 @@ pub fn create_key_codes_map() -> HashMap<keyboard::KeyCode, char> {
     ])
 }
 
+fn create_main_menu() -> Menu {
+    let menu_opt_1 = MenuOption {
+        label: "PLAY".to_string(),
+    };
+
+    let menu_opt_2 = MenuOption {
+        label: "SETTINGS".to_string(),
+    };
+    Menu {
+        options: Vec::from([menu_opt_1, menu_opt_2]),
+        selected_option_index: 0,
+    }
+}
+
+fn create_settings_menu() -> Menu {
+    let menu_opt_1 = MenuOption {
+        label: "CHANGE FONT".to_string(),
+    };
+
+    let menu_opt_2 = MenuOption {
+        label: "CHANGE BG COLOR".to_string(),
+    };
+    Menu {
+        options: Vec::from([menu_opt_1, menu_opt_2]),
+        selected_option_index: 0,
+    }
+}
+
+fn create_fonts_menu() -> Menu {
+    let menu_opt_1 = MenuOption {
+        label: "GravitasOne".to_string(),
+    };
+
+    let menu_opt_2 = MenuOption {
+        label: "Creepster".to_string(),
+    };
+    Menu {
+        options: Vec::from([menu_opt_1, menu_opt_2]),
+        selected_option_index: 0,
+    }
+}
+
+fn create_bg_colors_menu() -> Menu {
+    let menu_opt_1 = MenuOption {
+        label: "PURPLE".to_string(),
+    };
+
+    let menu_opt_2 = MenuOption {
+        label: "GREEN".to_string(),
+    };
+    Menu {
+        options: Vec::from([menu_opt_1, menu_opt_2]),
+        selected_option_index: 0,
+    }
+}
+
+fn get_color_by_label(label: String) -> Color {
+    if label == String::from("PURPLE") {
+        Color::new(0.19, 0.2, 0.45, 0.65)
+    } else if label == String::from("GREEN") {
+        Color::new(0.2, 0.4, 0.25, 0.85)
+    } else {
+        Color::WHITE
+    }
+}
+
+pub enum MenuType {
+    Main,
+    Settings,
+    Fonts,
+    BgColors,
+    None,
+}
+
 pub struct Game {
     screen_height: f32,
     screen_width: f32,
+    bg_color: Color,
     key_codes_map: HashMap<keyboard::KeyCode, char>,
     is_game_running: bool,
     words: VecDeque<Word>,
+    words_font: String,
     next_word_loop_length: f32,
     current_score: u32,
     life_points: u32,
     game_speed: u32,
+    current_menu_type: MenuType,
+    main_menu: Menu,
+    settings_menu: Menu,
+    fonts_menu: Menu,
+    bg_colors_menu: Menu,
     time_until_next_word: Option<f32>,
     game_speed_before_slow_down: Option<u32>,
     passed_time_since_game_end: Option<f32>,
@@ -73,11 +155,18 @@ impl Game {
             key_codes_map: create_key_codes_map(),
             next_word_loop_length: INITIAL_TIME_UNTIL_NEXT_WORD,
             words: VecDeque::new(),
+            words_font: String::from("GravitasOne"),
             screen_height: conf.window_mode.height,
             screen_width: conf.window_mode.width,
+            bg_color: Color::new(0.19, 0.2, 0.45, 0.65),
             current_score: 0,
             life_points: 0,
             game_speed: INITIAL_GAME_SPEED,
+            current_menu_type: MenuType::Main,
+            main_menu: create_main_menu(),
+            settings_menu: create_settings_menu(),
+            fonts_menu: create_fonts_menu(),
+            bg_colors_menu: create_bg_colors_menu(),
             time_until_next_word: None,
             game_speed_before_slow_down: None,
             passed_time_since_game_end: None,
@@ -85,126 +174,20 @@ impl Game {
             spawn_only_short_words_time_left: None,
         }
     }
-}
 
-impl EventHandler for Game {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if let Some(first_word) = self.words.front() {
-            if first_word.position.y >= self.screen_height {
-                if self.life_points > 0 {
-                    self.life_points -= 1;
-                    self.words.pop_front();
-                } else {
-                    self.end_game()?
-                }
-            }
-        }
-
-        if !self.is_game_running {
-            return Ok(());
-        }
-
-        let last_frame_length = ctx.time.delta().as_secs_f32();
-
-        if let Some(slow_down_time_left) = self.slow_down_time_left {
-            self.update_slow_down_time_left(slow_down_time_left, last_frame_length);
-        }
-
-        self.update_words_positions(self.game_speed as f32 * last_frame_length);
-
-        if let Some(time_until_next_word) = self.time_until_next_word {
-            if time_until_next_word <= 0.0 {
-                let mut new_word_limit = None;
-                if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
-                    if short_words_time_left <= 0.0 {
-                        self.spawn_only_short_words_time_left = None
-                    } else {
-                        new_word_limit = Some(3);
-                    }
-                }
-                self.spawn_new_word(new_word_limit);
-                self.time_until_next_word = Some(self.next_word_loop_length);
-            } else {
-                self.time_until_next_word = Some(time_until_next_word - last_frame_length);
-            }
-        }
-
-        if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
-            self.spawn_only_short_words_time_left = Some(short_words_time_left - last_frame_length);
-        }
-
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let mut canvas = graphics::Canvas::from_frame(ctx, Color::new(0.19, 0.2, 0.45, 0.65));
-        if let Some(time_passed) = self.passed_time_since_game_end {
-            if time_passed < 4.0 {
-                self.draw_end_game_message(&mut canvas, ctx);
-                self.passed_time_since_game_end =
-                    Some(time_passed + ctx.time.delta().as_secs_f32());
-            } else {
-                self.passed_time_since_game_end = None
-            }
-        }
-        if !self.is_game_running {
-            self.draw_home_screen(&mut canvas, ctx);
-        } else {
-            self.draw_player_stats(&mut canvas);
-            self.draw_words(&mut canvas);
-        }
-        canvas.finish(ctx)
-    }
-
-    fn key_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        input: ggez::input::keyboard::KeyInput,
-        _repeated: bool,
-    ) -> GameResult {
-        if let Some(input_key_code) = input.keycode {
-            if let Some(current_word) = self.words.front_mut() {
-                if let Some(typed_letter) = self.key_codes_map.get(&input_key_code) {
-                    current_word.handle_typed_letter(*typed_letter)
-                }
-
-                if current_word.is_completed() {
-                    self.complete_word();
-                    if self.next_word_loop_length > 0.2 {
-                        self.next_word_loop_length -= 0.0003;
-                    }
-                }
-            }
-
-            if !self.is_game_running && input_key_code == keyboard::KeyCode::Space {
-                self.start_game()?
-            }
-        }
-        return Ok(());
-    }
-}
-
-impl Game {
     fn draw_home_screen(&self, canvas: &mut Canvas, ctx: &Context) {
-        let mut text = graphics::Text::new("PRESS SPACE TO START");
-        text.set_font("SecondaryFont");
-
-        text.set_scale(graphics::PxScale::from(50.0));
-        let text_width = text.dimensions(ctx).unwrap().w;
-        canvas.draw(
-            &text,
-            graphics::DrawParam::default()
-                .color(Color::WHITE)
-                .dest(Point2 {
-                    x: self.screen_width / 2.0 - text_width / 2.0,
-                    y: 200.0,
-                }),
-        )
+        match self.current_menu_type {
+            MenuType::Main => self.main_menu.draw(canvas, ctx, self.screen_width),
+            MenuType::Settings => self.settings_menu.draw(canvas, ctx, self.screen_width),
+            MenuType::Fonts => self.fonts_menu.draw(canvas, ctx, self.screen_width),
+            MenuType::BgColors => self.bg_colors_menu.draw(canvas, ctx, self.screen_width),
+            MenuType::None => (),
+        }
     }
 
     fn draw_player_stats(&self, canvas: &mut Canvas) {
         let mut text = graphics::Text::new(format!("SCORE: {}", self.current_score));
-        text.set_font("SecondaryFont");
+        text.set_font("BungeeShade");
         text.set_scale(graphics::PxScale::from(50.0));
         canvas.draw(
             &text,
@@ -217,7 +200,7 @@ impl Game {
         );
 
         let mut text = graphics::Text::new(format!("LIFES: {}", self.life_points));
-        text.set_font("SecondaryFont");
+        text.set_font("BungeeShade");
         text.set_scale(graphics::PxScale::from(50.0));
         canvas.draw(
             &text,
@@ -233,7 +216,11 @@ impl Game {
     fn draw_words(&self, canvas: &mut Canvas) {
         for word in &self.words {
             let mut text = graphics::Text::new(word.get_display_value());
-            text.set_font(word.get_font());
+            let font = match word.effect {
+                Some(_effect) => String::from("BungeeShade"),
+                None => self.words_font.clone(),
+            };
+            text.set_font(font);
             text.set_scale(graphics::PxScale::from(40.0));
             canvas.draw(
                 &text,
@@ -246,7 +233,7 @@ impl Game {
 
     fn draw_end_game_message(&self, canvas: &mut Canvas, ctx: &Context) {
         let mut text = graphics::Text::new("YOU LOST");
-        text.set_font("ErrorFont");
+        text.set_font("Creepster");
         text.set_scale(graphics::PxScale::from(100.0));
         let text_width = text.dimensions(ctx).unwrap().w;
         canvas.draw(
@@ -334,6 +321,156 @@ impl Game {
         } else {
             self.slow_down_time_left = Some(current_time_left - last_frame_length);
         }
+    }
+}
+
+impl EventHandler for Game {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        if let Some(first_word) = self.words.front() {
+            if first_word.position.y >= self.screen_height {
+                if self.life_points > 0 {
+                    self.life_points -= 1;
+                    self.words.pop_front();
+                } else {
+                    self.end_game()?
+                }
+            }
+        }
+
+        if !self.is_game_running {
+            return Ok(());
+        }
+
+        let last_frame_length = ctx.time.delta().as_secs_f32();
+
+        if let Some(slow_down_time_left) = self.slow_down_time_left {
+            self.update_slow_down_time_left(slow_down_time_left, last_frame_length);
+        }
+
+        self.update_words_positions(self.game_speed as f32 * last_frame_length);
+
+        if let Some(time_until_next_word) = self.time_until_next_word {
+            if time_until_next_word <= 0.0 {
+                let mut new_word_limit = None;
+                if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+                    if short_words_time_left <= 0.0 {
+                        self.spawn_only_short_words_time_left = None
+                    } else {
+                        new_word_limit = Some(3);
+                    }
+                }
+                self.spawn_new_word(new_word_limit);
+                self.time_until_next_word = Some(self.next_word_loop_length);
+            } else {
+                self.time_until_next_word = Some(time_until_next_word - last_frame_length);
+            }
+        }
+
+        if let Some(short_words_time_left) = self.spawn_only_short_words_time_left {
+            self.spawn_only_short_words_time_left = Some(short_words_time_left - last_frame_length);
+        }
+
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let mut canvas = graphics::Canvas::from_frame(ctx, self.bg_color);
+        if let Some(time_passed) = self.passed_time_since_game_end {
+            if time_passed < 4.0 {
+                self.draw_end_game_message(&mut canvas, ctx);
+                self.passed_time_since_game_end =
+                    Some(time_passed + ctx.time.delta().as_secs_f32());
+            } else {
+                self.passed_time_since_game_end = None
+            }
+        }
+        if !self.is_game_running {
+            self.draw_home_screen(&mut canvas, ctx);
+        } else {
+            self.draw_player_stats(&mut canvas);
+            self.draw_words(&mut canvas);
+        }
+        canvas.finish(ctx)
+    }
+
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        input: ggez::input::keyboard::KeyInput,
+        _repeated: bool,
+    ) -> GameResult {
+        if let Some(input_key_code) = input.keycode {
+            if self.is_game_running {
+                if let Some(current_word) = self.words.front_mut() {
+                    if let Some(typed_letter) = self.key_codes_map.get(&input_key_code) {
+                        current_word.handle_typed_letter(*typed_letter)
+                    }
+
+                    if current_word.is_completed() {
+                        self.complete_word();
+                        if self.next_word_loop_length > 0.2 {
+                            self.next_word_loop_length -= 0.0003;
+                        }
+                    }
+                }
+            } else {
+                match self.current_menu_type {
+                    MenuType::Main => match input_key_code {
+                        keyboard::KeyCode::Up => self.main_menu.handle_move_up(),
+                        keyboard::KeyCode::Down => self.main_menu.handle_move_down(),
+                        keyboard::KeyCode::Space => {
+                            let selected_option = self.main_menu.get_selected_option();
+                            if selected_option.label == String::from("PLAY") {
+                                self.start_game()?
+                            } else if selected_option.label == String::from("SETTINGS") {
+                                self.current_menu_type = MenuType::Settings;
+                            }
+                        }
+                        _ => (),
+                    },
+
+                    MenuType::Settings => match input_key_code {
+                        keyboard::KeyCode::Up => self.settings_menu.handle_move_up(),
+                        keyboard::KeyCode::Down => self.settings_menu.handle_move_down(),
+                        keyboard::KeyCode::Left => self.current_menu_type = MenuType::Main,
+                        keyboard::KeyCode::Space => {
+                            let selected_option = self.settings_menu.get_selected_option();
+                            if selected_option.label == String::from("CHANGE FONT") {
+                                self.current_menu_type = MenuType::Fonts;
+                            } else if selected_option.label == String::from("CHANGE BG COLOR") {
+                                self.current_menu_type = MenuType::BgColors;
+                            }
+                        }
+                        _ => (),
+                    },
+
+                    MenuType::Fonts => match input_key_code {
+                        keyboard::KeyCode::Up => self.fonts_menu.handle_move_up(),
+                        keyboard::KeyCode::Down => self.fonts_menu.handle_move_down(),
+                        keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
+                        keyboard::KeyCode::Space => {
+                            self.words_font = self.fonts_menu.get_selected_option().label.clone()
+                        }
+                        _ => (),
+                    },
+
+                    MenuType::BgColors => match input_key_code {
+                        keyboard::KeyCode::Up => self.bg_colors_menu.handle_move_up(),
+                        keyboard::KeyCode::Down => self.bg_colors_menu.handle_move_down(),
+                        keyboard::KeyCode::Left => self.current_menu_type = MenuType::Settings,
+                        keyboard::KeyCode::Space => {
+                            self.bg_color = get_color_by_label(
+                                self.bg_colors_menu.get_selected_option().label.clone(),
+                            )
+                        }
+                        _ => (),
+                    },
+
+                    MenuType::None => (),
+                }
+            }
+        }
+        return Ok(());
     }
 }
 
@@ -455,8 +592,11 @@ mod tests {
 
         game.current_score = 10;
         game.game_speed = INITIAL_GAME_SPEED;
-        let word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
-        let word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        let mut word_1 = Word::new("word1", Point2 { x: 1.0, y: 1.0 }, 0);
+        word_1.effect = None;
+        let mut word_2 = Word::new("word2", Point2 { x: 0.3, y: 2.0 }, 0);
+        word_2.effect = None;
+
         game.words = VecDeque::from([word_1, word_2]);
 
         game.complete_word();

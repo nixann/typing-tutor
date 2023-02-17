@@ -4,30 +4,26 @@ mod tests {
     use typing_tutor::word::{Word, WordEffect};
 
     #[test]
-    fn it_returns_the_correct_font_and_color_when_the_word_has_no_effect() {
+    fn it_returns_the_correct_color_when_the_word_has_no_effect() {
         let mut word = Word::new("val", Point2 { x: 1.0, y: 1.0 }, 0);
         word.effect = None;
 
-        assert_eq!(word.get_font(), "PrimaryFont");
         assert_eq!(word.get_color(), Color::WHITE);
     }
 
     #[test]
-    fn it_returns_the_correct_font_and_color_when_the_word_has_an_effect() {
+    fn it_returns_the_correct_color_when_the_word_has_an_effect() {
         let mut word = Word::new("val", Point2 { x: 1.0, y: 1.0 }, 0);
         word.effect = Some(WordEffect::AddLife);
 
-        assert_eq!(word.get_font(), "SecondaryFont");
         assert_eq!(word.get_color(), Color::GREEN);
 
         word.effect = Some(WordEffect::SlowDown);
 
-        assert_eq!(word.get_font(), "SecondaryFont");
         assert_eq!(word.get_color(), Color::new(0.06, 0.9, 0.92, 0.65));
 
         word.effect = Some(WordEffect::SpawnOnlyShortWords);
 
-        assert_eq!(word.get_font(), "SecondaryFont");
         assert_eq!(word.get_color(), Color::YELLOW);
     }
 

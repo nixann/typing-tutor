@@ -26,11 +26,11 @@ fn main() {
 
     // load fonts
     let font_data = graphics::FontData::from_path(&ctx, "/GravitasOne.ttf").unwrap();
-    ctx.gfx.add_font("PrimaryFont", font_data);
+    ctx.gfx.add_font("GravitasOne", font_data);
     let font_data = graphics::FontData::from_path(&ctx, "/BungeeShade.ttf").unwrap();
-    ctx.gfx.add_font("SecondaryFont", font_data);
+    ctx.gfx.add_font("BungeeShade", font_data);
     let font_data = graphics::FontData::from_path(&ctx, "/Creepster.ttf").unwrap();
-    ctx.gfx.add_font("ErrorFont", font_data);
+    ctx.gfx.add_font("Creepster", font_data);
     let state = Game::new(&conf);
     event::run(ctx, event_loop, state);
 }
