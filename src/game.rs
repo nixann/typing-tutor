@@ -206,27 +206,29 @@ impl Game {
 
     fn draw_player_stats(&self, canvas: &mut Canvas) {
         let mut text = graphics::Text::new(format!("SCORE: {}", self.current_score));
-        self.draw_text(
-            &mut text,
-            graphics::PxScale::from(50.0),
-            Point2 {
-                x: 30.0,
-                y: self.screen_height - 100.0,
-            },
-            Color::WHITE,
-            canvas,
+        text.set_font("SecondaryFont");
+        text.set_scale(graphics::PxScale::from(50.0));
+        canvas.draw(
+            &text,
+            graphics::DrawParam::default()
+                .color(Color::new(0.8, 0.4, 0.17, 0.88))
+                .dest(Point2 {
+                    x: 30.0,
+                    y: self.screen_height - 100.0,
+                }),
         );
 
-        let mut text = graphics::Text::new(format!("LIFE POINTS: {}", self.life_points));
-        self.draw_text(
-            &mut text,
-            graphics::PxScale::from(50.0),
-            Point2 {
-                x: 30.0,
-                y: self.screen_height - 150.0,
-            },
-            Color::WHITE,
-            canvas,
+        let mut text = graphics::Text::new(format!("LIFES: {}", self.life_points));
+        text.set_font("SecondaryFont");
+        text.set_scale(graphics::PxScale::from(50.0));
+        canvas.draw(
+            &text,
+            graphics::DrawParam::default()
+                .color(Color::GREEN)
+                .dest(Point2 {
+                    x: 30.0,
+                    y: self.screen_height - 175.0,
+                }),
         );
     }
 
@@ -258,23 +260,6 @@ impl Game {
                     y: 100.0,
                 }),
         );
-    }
-
-    fn draw_text(
-        &self,
-        text: &mut graphics::Text,
-        scale: graphics::PxScale,
-        position: Point2<f32>,
-        color: Color,
-        canvas: &mut Canvas,
-    ) {
-        text.set_font("PrimaryFont");
-
-        text.set_scale(scale);
-        canvas.draw(
-            text,
-            graphics::DrawParam::default().color(color).dest(position),
-        )
     }
 
     fn start_game(&mut self) -> GameResult {
