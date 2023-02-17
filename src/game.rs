@@ -170,8 +170,8 @@ impl EventHandler for Game {
 
                 if current_word.is_completed() {
                     self.complete_word();
-                    if self.next_word_loop_length > 0.001 {
-                        self.next_word_loop_length -= 0.001;
+                    if self.next_word_loop_length > 0.2 {
+                        self.next_word_loop_length -= 0.0003;
                     }
                 }
             }
@@ -306,7 +306,7 @@ impl Game {
     fn complete_word(&mut self) {
         let word = self.words.pop_front().unwrap();
         self.current_score += WORD_SCORE;
-        self.game_speed += 10;
+        self.game_speed += 5;
         if let Some(effect) = word.effect {
             self.apply_word_effect(effect)
         }
@@ -323,7 +323,7 @@ impl Game {
             WordEffect::SpawnOnlyShortWords => self.spawn_only_short_words_time_left = Some(5.0),
         }
     }
-    
+
     fn update_slow_down_time_left(&mut self, current_time_left: f32, last_frame_length: f32) {
         if current_time_left <= 0.0 {
             self.slow_down_time_left = None;
@@ -463,7 +463,7 @@ mod tests {
 
         assert_eq!(game.words.len(), 1);
         assert_eq!(game.current_score, 20);
-        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 10);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 5);
     }
 
     #[test]
@@ -482,7 +482,7 @@ mod tests {
 
         assert_eq!(game.words.len(), 1);
         assert_eq!(game.current_score, 20);
-        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 10);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 5);
         assert_eq!(game.life_points, 1);
     }
 
@@ -505,7 +505,7 @@ mod tests {
         assert_eq!(game.game_speed, 25);
         assert_eq!(
             game.game_speed_before_slow_down,
-            Some(INITIAL_GAME_SPEED + 10)
+            Some(INITIAL_GAME_SPEED + 5)
         );
         assert_eq!(game.slow_down_time_left, Some(5.0));
     }
@@ -526,7 +526,7 @@ mod tests {
 
         assert_eq!(game.words.len(), 1);
         assert_eq!(game.current_score, 20);
-        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 10);
+        assert_eq!(game.game_speed, INITIAL_GAME_SPEED + 5);
         assert_eq!(game.spawn_only_short_words_time_left, Some(5.0));
     }
 }
